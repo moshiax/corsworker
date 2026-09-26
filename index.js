@@ -1,3 +1,5 @@
+import { env } from "cloudflare:workers"
+
 const blacklistUrls = []
 const whitelistOrigins = [".*"]
 
@@ -30,6 +32,15 @@ addEventListener("fetch", (event) => {
 })
 
 async function handleRequest(event) {
+	const ip = event.request.headers.get("CF-Connecting-IP") || "unknown"
+	const { success } = await env.IP_RATE_LIMITER.limit({ key: ip })
+
+	if (!success) {
+		return new Response("Too many requests", {
+			status: 429
+		})
+	}
+
 	const isPreflightRequest = event.request.method === "OPTIONS"
 	const originUrl = new URL(event.request.url)
 
